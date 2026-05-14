@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DewClaw Land Holdings — Market Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#1e3a8a;--navy2:#2a4db0;--navy3:#3a6ab8;
+  --bg:#f4f6fa;--card:#fff;--border:#dce3f0;--border2:#e8edf8;
+  --text:#1a2a4a;--text2:#4a5a7a;--text3:#8a9ab8;
+  --green:#1a9a3a;--amber:#e8a020;--purple:#8a4ac8;--red:#e85030;
+  --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh}
+
+#loading{position:fixed;inset:0;background:var(--navy);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.spin{width:42px;height:42px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#lmsg{color:rgba(255,255,255,.75);font-size:14px}
+#lprog{color:#93b4e8;font-size:12px;font-weight:600;min-height:18px}
+.lerr{background:rgba(255,255,255,.08);border:1px solid rgba(255,120,100,.5);border-radius:10px;padding:14px 20px;color:#ffb0a0;font-size:13px;max-width:420px;text-align:center;line-height:1.6;display:none;white-space:pre-wrap}
+
+.topbar{background:var(--navy);height:56px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:500;box-shadow:0 2px 12px rgba(30,58,138,.2)}
+.brand{display:flex;align-items:center;gap:10px}
+.bn{font-family:var(--fh);font-size:17px;color:#fff;font-weight:800;letter-spacing:-.01em}
+.bt{font-size:11px;color:#93b4e8;margin-left:6px}
+.tr{display:flex;align-items:center;gap:10px}
+.live-dot{width:7px;height:7px;background:#4ade80;border-radius:50%}
+.live-txt{font-size:9px;color:#4ade80;font-weight:700;letter-spacing:.08em}
+.upd{font-size:11px;color:#93b4e8}
+.lead-ct{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#d0e4ff;font-size:11px;padding:4px 10px;border-radius:6px}
+.bref{background:#fff;color:var(--navy);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;font-family:var(--fb);cursor:pointer}
+.bref:hover{background:#e8edf8}
+
+.tabbar{background:var(--card);border-bottom:2px solid var(--border2);padding:0 28px;display:flex}
+.tab{padding:13px 18px;font-size:12px;font-weight:600;color:var(--text3);border:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-2px;background:none;font-family:var(--fb)}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+
+.filterbar{background:var(--card);border-bottom:1px solid var(--border2);padding:9px 28px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.fl{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}
+select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-size:11px;color:var(--text);font-family:var(--fb);cursor:pointer;outline:none}
+select:focus{border-color:var(--navy)}
+.fdiv{width:1px;height:16px;background:var(--border2)}
+.bclr{background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--fb);padding:3px 7px}
+
+.main{padding:22px 28px;max-width:1380px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px 17px;border-top:3px solid var(--navy)}
+.kl{font-size:8px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:7px}
+.kv{font-family:var(--fh);font-size:26px;font-weight:800;color:var(--text);line-height:1}
+.ks{font-size:9px;color:var(--text3);margin-top:4px}
+
+.row{display:grid;gap:16px;margin-bottom:16px}
+.r2{grid-template-columns:1fr 1fr}
+.rmap{grid-template-columns:1.3fr 1fr}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px}
+.ct{font-size:8px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.cs{font-size:9px;color:var(--text3);margin-bottom:14px}
+
+#map{height:370px;border-radius:7px;border:1px solid var(--border)}
+#map-us{height:440px;border-radius:7px;border:1px solid var(--border)}
+
+.ctbl{width:100%;border-collapse:collapse;font-size:11px}
+.ctbl th{padding:6px 9px;text-align:left;color:var(--text3);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);background:#f8f9fd;white-space:nowrap}
+.ctbl th.r,.ctbl td.r{text-align:right}
+.ctbl td{padding:7px 9px;border-bottom:1px solid var(--border2);color:var(--text2)}
+.ctbl tr:last-child td{border-bottom:none}
+.ctbl tr:hover td{background:#f8f9fd}
+.cname{font-weight:700;color:var(--text)}
+.rk{font-weight:700;color:var(--text3);font-size:9px}
+.sbadge{border-radius:4px;padding:2px 6px;font-size:8px;font-weight:700;display:inline-block}
+.shi{background:#e8f5e8;color:#1a6a2a;border:1px solid #b8ddb8}
+.smd{background:#fff8e8;color:#9a7010;border:1px solid #e8d898}
+.slo{background:#fef0ee;color:#b03828;border:1px solid #f0c0b0}
+
+.frow{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.fname{font-size:11px;color:var(--text2);width:130px;flex-shrink:0}
+.fbg{flex:1;background:var(--bg);border-radius:4px;height:22px;overflow:hidden}
+.fbar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;transition:width 1s ease}
+.fct{font-size:10px;font-weight:700;color:#fff}
+.fpct{font-size:10px;color:var(--text3);width:40px;text-align:right;flex-shrink:0}
+
+.sbar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.sbar-lbl{font-size:11px;font-weight:700;color:var(--text);width:26px;flex-shrink:0}
+.sbar-bg{flex:1;background:var(--bg);border-radius:4px;height:24px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;min-width:44px}
+.sbar-val{font-size:10px;font-weight:700;color:#fff}
+.sbar-meta{font-size:9px;color:var(--text3);flex-shrink:0;width:120px}
+
+.hbr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.hbl{font-size:10px;color:var(--text3);width:88px;text-align:right;flex-shrink:0}
+.hbb{flex:1;background:var(--bg);border-radius:3px;height:18px;overflow:hidden}
+.hbf{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:6px}
+.hbv{font-size:9px;font-weight:700;color:#fff}
+
+.map-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.map-card{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:11px 13px}
+.mc-county{font-size:10px;font-weight:700;color:var(--text)}
+.mc-city{font-size:9px;color:var(--text3);margin-top:2px}
+.mc-count{font-family:var(--fh);font-size:20px;font-weight:800;color:var(--navy);margin-top:5px;line-height:1}
+.mc-sub{font-size:9px;margin-top:3px}
+
+#dash{display:none}
+@media(max-width:920px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .r2,.rmap{grid-template-columns:1fr}
+  .map-cards{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div style="font-family:var(--fh);font-size:22px;color:#fff;font-weight:800;margin-bottom:4px">DewClaw Land Holdings</div>
+  <div style="font-size:11px;color:#93b4e8;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">Market Intelligence</div>
+  <div class="spin"></div>
+  <div id="lmsg">Connecting to Follow Up Boss…</div>
+  <div id="lprog"></div>
+  <div class="lerr" id="lerr"></div>
+</div>
+
+<div id="dash">
+  <div class="topbar">
+    <div class="brand">
+      <span class="bn">DewClaw Land Holdings</span>
+      <span class="bt">Market Intelligence</span>
+    </div>
+    <div class="tr">
+      <div class="live-dot"></div>
+      <span class="live-txt">LIVE</span>
+      <span class="upd" id="upd"></span>
+      <span class="lead-ct" id="lead-count"></span>
+      <button class="bref" onclick="loadData()">↺ Refresh</button>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab active" onclick="showTab('overview',this)">Overview</button>
+    <button class="tab" onclick="showTab('mapview',this)">Map view</button>
+  </div>
+
+  <div class="filterbar">
+    <span class="fl">Filter</span>
+    <select id="f-year"   onchange="applyFilters()"><option value="">All years</option></select>
+    <select id="f-month"  onchange="applyFilters()"><option value="">All months</option></select>
+    <div class="fdiv"></div>
+    <select id="f-county" onchange="applyFilters()"><option value="">All counties</option></select>
+    <select id="f-city"   onchange="applyFilters()"><option value="">All cities</option></select>
+    <select id="f-state"  onchange="applyFilters()"><option value="">All states</option></select>
+    <div class="fdiv"></div>
+    <select id="f-stage"  onchange="applyFilters()"><option value="">All stages</option></select>
+    <select id="f-source" onchange="applyFilters()"><option value="">All sources</option></select>
+    <button class="bclr" onclick="clearFilters()">✕ Clear</button>
+    <span id="fcount" style="margin-left:auto;font-size:10px;color:var(--text3)"></span>
+  </div>
+
+  <div id="panel-overview">
+    <div class="main">
+      <div class="kpis">
+        <div class="kpi" style="border-top-color:var(--navy)">
+          <div class="kl">Total leads</div><div class="kv" id="k-total">—</div><div class="ks" id="k-total-s"></div>
+        </div>
+        <div class="kpi" style="border-top-color:#3a8ac8">
+          <div class="kl">New leads</div><div class="kv" id="k-new">—</div><div class="ks" id="k-new-s"></div>
+        </div>
+        <div class="kpi" style="border-top-color:var(--amber)">
+          <div class="kl">Appointments</div><div class="kv" id="k-appt">—</div><div class="ks" id="k-appt-s"></div>
+        </div>
+        <div class="kpi" style="border-top-color:var(--purple)">
+          <div class="kl">Under contract</div><div class="kv" id="k-contract">—</div><div class="ks" id="k-contract-s"></div>
+        </div>
+        <div class="kpi" style="border-top-color:var(--green)">
+          <div class="kl">Closed / won</div><div class="kv" id="k-closed" style="color:var(--green)">—</div><div class="ks" id="k-closed-s"></div>
+        </div>
+        <div class="kpi" style="border-top-color:var(--red)">
+          <div class="kl">Active counties</div><div class="kv" id="k-counties">—</div><div class="ks" id="k-counties-s"></div>
+        </div>
+      </div>
+
+      <div class="row rmap">
+        <div class="card">
+          <div class="ct">County heat map</div>
+          <div class="cs">Bubble size = lead volume · green = closed · amber = appointment · navy = active · click for details</div>
+          <div id="map"></div>
+        </div>
+        <div class="card" style="padding:0">
+          <div style="padding:18px 20px 0">
+            <div class="ct">County ranking</div>
+            <div class="cs">Score = appointments 35% · contracts 30% · closed 35%</div>
+          </div>
+          <div style="overflow-y:auto;max-height:430px">
+            <table class="ctbl">
+              <thead><tr>
+                <th>#</th><th>County</th><th>St</th>
+                <th class="r">Leads</th><th class="r">Appts</th>
+                <th class="r">Closed</th><th class="r">Score</th>
+              </tr></thead>
+              <tbody id="county-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="row r2">
+        <div class="card">
+          <div class="ct">Monthly lead volume</div>
+          <div class="cs">Leads received per month via Smarter Contact → Zapier → FUB</div>
+          <div style="height:220px"><canvas id="trend-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ct">Conversion funnel</div>
+          <div class="cs">Lead → Appointment → Contract → Closed</div>
+          <div id="funnel" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <div class="row r2">
+        <div class="card">
+          <div class="ct">Stage distribution</div>
+          <div class="cs">Current FUB status across filtered leads</div>
+          <div style="height:220px"><canvas id="stage-chart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="ct">Top states by volume</div>
+          <div class="cs">Total leads per state — counties active and deals closed</div>
+          <div id="state-bars" style="margin-top:4px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-mapview" style="display:none">
+    <div class="main">
+      <div class="card" style="margin-bottom:16px">
+        <div class="ct">US lead map</div>
+        <div class="cs">All lead locations — color = best stage reached · size = lead count · use county and city filters above</div>
+        <div id="map-us"></div>
+        <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;align-items:center">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><span style="width:10px;height:10px;border-radius:50%;background:var(--navy);display:inline-block"></span>New / Active</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><span style="width:10px;height:10px;border-radius:50%;background:var(--amber);display:inline-block"></span>Appointment</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block"></span>Under contract</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block"></span>Closed / won</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><span style="width:10px;height:10px;border-radius:50%;background:var(--red);display:inline-block"></span>Dead / lost</div>
+          <span style="margin-left:auto;font-size:10px;color:var(--text3)">Circle size = lead volume in area</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ct">Lead breakdown by county &amp; city</div>
+        <div class="cs">Filtered results — sorted by lead volume</div>
+        <div class="map-cards" id="map-cards"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const CHART_PAL=["#1e3a8a","#2a4db0","#3a6ab8","#e8a020","#8a4ac8","#1a9a3a","#e85030","#3a8ac8","#6aaad8","#93b4e8"];
+const STAGE_MAP={
+  appointment:["appointment set","appointment","appt","booked","scheduled","meeting"],
+  contract:   ["under contract","contract","in contract","pending","contingent"],
+  closed:     ["closed","closed won","won","purchased","sold","deal closed","closed/won"],
+  dead:       ["dead","lost","not interested","disqualified","no","dnc","unqualified","bad number"],
+};
+const COORDS={
+  "Wayne":[41.60,-75.05],"Travis":[30.33,-97.75],"Williamson":[30.60,-97.60],
+  "Hays":[29.98,-98.05],"Bastrop":[30.10,-97.32],"Caldwell":[29.82,-97.62],
+  "Lee":[30.32,-96.90],"Polk":[31.38,-93.50],"Newton":[30.78,-93.74],
+  "Sabine":[31.50,-93.80],"Nacogdoches":[31.60,-94.62],"Cherokee":[31.84,-95.17],
+  "Anderson":[31.82,-95.62],"Henderson":[32.22,-95.90],"Rusk":[32.11,-94.72],
+  "Panola":[32.16,-94.29],"Harrison":[32.52,-94.38],"Marion":[32.80,-94.35],
+  "Cass":[33.08,-94.12],"Bowie":[33.44,-94.42],"Lamar":[33.67,-95.57],
+  "Smith":[32.38,-95.30],"Van Zandt":[32.56,-95.87],"Wood":[32.78,-95.38],
+  "Upshur":[32.73,-94.94],"Gregg":[32.48,-94.82],"Hardin":[30.33,-94.40],
+  "Jasper":[30.74,-94.00],"Tyler":[30.78,-94.35],"Liberty":[30.04,-94.80],
+  "San Jacinto":[30.58,-95.17],"Montgomery":[30.30,-95.50],"Walker":[30.73,-95.57],
+  "Trinity":[31.08,-95.37],"Houston":[31.33,-95.42],"Angelina":[31.27,-94.62],
+  "Shelby":[31.80,-94.15],"Luzerne":[41.25,-75.88],"Lackawanna":[41.43,-75.60],
+  "Monroe":[41.05,-75.35],"Pike":[41.32,-75.02],"Susquehanna":[41.85,-75.80],
+  "Wyoming":[41.55,-75.85],"Bradford":[41.78,-76.52],"Sullivan":[41.44,-76.51],
+  "Columbia":[41.05,-76.41],"Lycoming":[41.34,-77.06],"Clinton":[41.22,-77.64],
+  "Centre":[40.91,-77.82],"Union":[40.96,-77.16],"Snyder":[40.77,-77.08],
+};
+
+let ALL=[],FILTERED=[],activeTab="overview";
+let tChart,sChart,leafMap=null,leafMapUS=null,mkrs=[],mkrsUS=[];
+
+const fmt=n=>Number(n||0).toLocaleString();
+const pct=(a,b)=>b>0?(a/b*100).toFixed(1)+"%":"0%";
+const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+const setSub=(id,v)=>{const e=document.getElementById(id+"-s");if(e)e.textContent=v;};
+
+function stageGroup(raw=""){
+  const s=(raw||"").toLowerCase().trim();
+  for(const[g,terms]of Object.entries(STAGE_MAP))if(terms.some(t=>s.includes(t)))return g;
+  return"active";
+}
+function getCounty(l){
+  if(l.county)return l.county.replace(/ County$/i,"").trim();
+  const cf=(l.customFields||[]).find(f=>/^county$/i.test(f.key||f.name||""));
+  if(cf?.value)return cf.value.replace(/ County$/i,"").trim();
+  return(l.addresses||[])[0]?.city||"Unknown";
+}
+function getState(l){const a=(l.addresses||[])[0];return a?.state||l.state||"?";}
+function getCity(l){return(l.addresses||[])[0]?.city||"";}
+function getCreated(l){return new Date(l.created||l.createdAt||0);}
+
+async function fubFetch(endpoint,params={}){
+  const qs=new URLSearchParams({endpoint,...params}).toString();
+  const r=await fetch(`/api/fub?${qs}`);
+  if(!r.ok)throw new Error(`Server error ${r.status}`);
+  return r.json();
+}
+
+async function fetchAllLeads(){
+  let all=[],offset=0,page=1;
+  while(true){
+    document.getElementById("lprog").textContent=`Loading page ${page} — ${all.length.toLocaleString()} leads…`;
+    const data=await fubFetch("/people",{limit:100,offset,sort:"-created"});
+    const rows=data.people||data.data||[];
+    if(!rows.length)break;
+    all=all.concat(rows);
+    const total=data._metadata?.total||data.total||0;
+    if(total&&all.length>=total)break;
+    if(rows.length<100)break;
+    offset+=100;page++;
+  }
+  return all;
+}
+
+async function loadData(){
+  document.getElementById("loading").style.display="flex";
+  document.getElementById("dash").style.display="none";
+  document.getElementById("lerr").style.display="none";
+  document.getElementById("lmsg").textContent="Connecting to Follow Up Boss…";
+  try{
+    ALL=await fetchAllLeads();
+    document.getElementById("upd").textContent="Synced "+new Date().toLocaleTimeString();
+    document.getElementById("lead-count").textContent=fmt(ALL.length)+" leads";
+    buildFilters();applyFilters();
+    document.getElementById("loading").style.display="none";
+    document.getElementById("dash").style.display="block";
+  }catch(e){
+    document.getElementById("lmsg").textContent="Connection failed";
+    document.getElementById("lprog").textContent="";
+    const err=document.getElementById("lerr");
+    err.style.display="block";
+    err.textContent="Error: "+e.message+"\n\nCheck that FUB_API_KEY is set in Render environment variables.";
+  }
+}
+
+function showTab(name,el){
+  activeTab=name;
+  document.getElementById("panel-overview").style.display=name==="overview"?"block":"none";
+  document.getElementById("panel-mapview").style.display=name==="mapview"?"block":"none";
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  if(name==="mapview")setTimeout(()=>{if(leafMapUS)leafMapUS.invalidateSize();},150);
+}
+
+function buildFilters(){
+  const yrs=new Set(),mos=new Set(),cnts=new Set(),cities=new Set(),sts=new Set(),stgs=new Set(),srcs=new Set();
+  ALL.forEach(l=>{
+    const d=getCreated(l);
+    if(d.getFullYear()>2000){yrs.add(d.getFullYear());mos.add(d.getMonth());}
+    const c=getCounty(l);if(c!=="Unknown")cnts.add(c);
+    const ci=getCity(l);if(ci)cities.add(ci);
+    const s=getState(l);if(s!=="?")sts.add(s);
+    stgs.add(l.stage||l.status||"New Lead");
+    if(l.source)srcs.add(l.source);
+  });
+  fillSel("f-year",[...yrs].sort((a,b)=>b-a).map(y=>({v:y,l:y})),"All years");
+  fillSel("f-month",[...mos].sort((a,b)=>a-b).map(m=>({v:m,l:MONTHS[m]})),"All months");
+  fillSel("f-county",[...cnts].sort().map(c=>({v:c,l:c})),"All counties");
+  fillSel("f-city",[...cities].sort().map(c=>({v:c,l:c})),"All cities");
+  fillSel("f-state",[...sts].sort().map(s=>({v:s,l:s})),"All states");
+  fillSel("f-stage",[...stgs].sort().map(s=>({v:s,l:s})),"All stages");
+  fillSel("f-source",[...srcs].sort().map(s=>({v:s,l:s})),"All sources");
+}
+
+function fillSel(id,items,all){
+  const el=document.getElementById(id),cur=el.value;
+  el.innerHTML=`<option value="">${all}</option>`;
+  items.forEach(({v,l})=>{
+    const o=document.createElement("option");
+    o.value=v;o.textContent=l;
+    if(String(v)===String(cur))o.selected=true;
+    el.appendChild(o);
+  });
+}
+
+function applyFilters(){
+  const fy=document.getElementById("f-year").value;
+  const fm=document.getElementById("f-month").value;
+  const fc=document.getElementById("f-county").value;
+  const fci=document.getElementById("f-city").value;
+  const fst=document.getElementById("f-state").value;
+  const fsg=document.getElementById("f-stage").value;
+  const fsr=document.getElementById("f-source").value;
+  FILTERED=ALL.filter(l=>{
+    const d=getCreated(l);
+    if(fy&&String(d.getFullYear())!==String(fy))return false;
+    if(fm!==""&&String(d.getMonth())!==String(fm))return false;
+    if(fc&&getCounty(l)!==fc)return false;
+    if(fci&&getCity(l)!==fci)return false;
+    if(fst&&getState(l)!==fst)return false;
+    if(fsg&&(l.stage||l.status||"New Lead")!==fsg)return false;
+    if(fsr&&(l.source||"")!==fsr)return false;
+    return true;
+  });
+  const active=[fy,fm,fc,fci,fst,fsg,fsr].filter(Boolean).length;
+  document.getElementById("fcount").textContent=
+    active?`${active} filter${active>1?"s":""} · ${fmt(FILTERED.length)} leads`:`${fmt(FILTERED.length)} leads`;
+  renderAll();
+}
+
+function clearFilters(){
+  ["f-year","f-month","f-county","f-city","f-state","f-stage","f-source"]
+    .forEach(id=>document.getElementById(id).value="");
+  applyFilters();
+}
+
+function buildCountyData(){
+  const map={};
+  FILTERED.forEach(l=>{
+    const county=getCounty(l),state=getState(l),city=getCity(l),key=county+"|"+state;
+    if(!map[key])map[key]={county,state,city,leads:0,appts:0,contracts:0,closed:0,dead:0};
+    const r=map[key];r.leads++;
+    const g=stageGroup(l.stage||l.status||"");
+    if(g==="appointment")r.appts++;
+    if(g==="contract")r.contracts++;
+    if(g==="closed")r.closed++;
+    if(g==="dead")r.dead++;
+  });
+  return Object.values(map).map(r=>{
+    const score=((r.appts/Math.max(r.leads,1))*35+(r.contracts/Math.max(r.leads,1))*30+(r.closed/Math.max(r.leads,1))*35)*100;
+    return{...r,score:score.toFixed(1)};
+  }).sort((a,b)=>parseFloat(b.score)-parseFloat(a.score));
+}
+
+function buildStateData(){
+  const map={};
+  FILTERED.forEach(l=>{
+    const s=getState(l);if(s==="?")return;
+    if(!map[s])map[s]={state:s,leads:0,closed:0,counties:new Set()};
+    map[s].leads++;
+    if(stageGroup(l.stage||l.status||"")==="closed")map[s].closed++;
+    map[s].counties.add(getCounty(l));
+  });
+  return Object.values(map).map(r=>({...r,counties:r.counties.size}))
+    .sort((a,b)=>b.leads-a.leads);
+}
+
+function renderAll(){
+  renderKPIs();
+  renderCountyMap();
+  renderUSMap();
+  renderCountyTable();
+  renderTrend();
+  renderFunnel();
+  renderStageChart();
+  renderStateBars();
+  renderMapCards();
+}
+
+function renderKPIs(){
+  const total=FILTERED.length;
+  let newL=0,appt=0,contract=0,closed=0;
+  const cs=new Set(),sts=new Set();
+  FILTERED.forEach(l=>{
+    const g=stageGroup(l.stage||l.status||"");
+    if(g==="active")newL++;
+    if(g==="appointment")appt++;
+    if(g==="contract")contract++;
+    if(g==="closed")closed++;
+    const c=getCounty(l);if(c!=="Unknown")cs.add(c);
+    const s=getState(l);if(s!=="?")sts.add(s);
+  });
+  setEl("k-total",fmt(total));
+  setEl("k-new",fmt(newL));setSub("k-new",pct(newL,total)+" of leads");
+  setEl("k-appt",fmt(appt));setSub("k-appt",pct(appt,total)+" rate");
+  setEl("k-contract",fmt(contract));setSub("k-contract",pct(contract,total)+" of leads");
+  setEl("k-closed",fmt(closed));setSub("k-closed",pct(closed,total)+" close rate");
+  setEl("k-counties",fmt(cs.size));setSub("k-counties",`across ${sts.size} state${sts.size!==1?"s":""}`);
+}
+
+function mapMarkers(mapObj, mkrsArr, data){
+  mkrsArr.forEach(m=>mapObj.removeLayer(m));
+  mkrsArr.length=0;
+  const maxL=Math.max(...data.map(c=>c.leads),1);
+  data.forEach(c=>{
+    const coord=COORDS[c.county];if(!coord)return;
+    const r=Math.max(9,Math.min(38,9+(c.leads/maxL)*29));
+    const op=0.35+(c.leads/maxL)*0.5;
+    const col=c.closed>0?"#1a9a3a":c.contracts>0?"#8a4ac8":c.appts>0?"#e8a020":"#1e3a8a";
+    const m=L.circleMarker(coord,{radius:r,fillColor:col,color:"#fff",weight:2,opacity:1,fillOpacity:op});
+    m.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:160px">
+      <b style="font-size:13px;color:#1a2a4a">${c.county} County, ${c.state}</b>
+      <div style="margin-top:8px;font-size:12px;color:#6b7a96;line-height:2">
+        Leads: <b style="color:#1a2a4a">${fmt(c.leads)}</b><br>
+        City: <b style="color:#1a2a4a">${c.city||"—"}</b><br>
+        Appointments: <b style="color:#e8a020">${fmt(c.appts)}</b><br>
+        Under contract: <b style="color:#8a4ac8">${fmt(c.contracts)}</b><br>
+        Closed: <b style="color:#1a9a3a">${fmt(c.closed)}</b><br>
+        Score: <b style="color:#1a2a4a">${c.score}</b>
+      </div>
+    </div>`);
+    m.addTo(mapObj);mkrsArr.push(m);
+  });
+  if(mkrsArr.length>0){try{mapObj.fitBounds(L.featureGroup(mkrsArr).getBounds().pad(0.25));}catch(e){}}
+}
+
+function renderCountyMap(){
+  if(!leafMap){
+    leafMap=L.map("map").setView([35,-90],5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap",maxZoom:18}).addTo(leafMap);
+  }
+  mapMarkers(leafMap,mkrs,buildCountyData());
+}
+
+function renderUSMap(){
+  if(!leafMapUS){
+    leafMapUS=L.map("map-us").setView([37,-96],4);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap",maxZoom:18}).addTo(leafMapUS);
+  }
+  mapMarkers(leafMapUS,mkrsUS,buildCountyData());
+}
+
+function renderCountyTable(){
+  const data=buildCountyData();
+  document.getElementById("county-tbody").innerHTML=data.map((c,i)=>{
+    const s=parseFloat(c.score);
+    const cls=s>=5?"shi":s>=1?"smd":"slo";
+    return`<tr>
+      <td><span class="rk">${i+1}</span></td>
+      <td><span class="cname">${c.county}</span></td>
+      <td style="color:var(--text3);font-size:10px">${c.state}</td>
+      <td class="r">${fmt(c.leads)}</td>
+      <td class="r" style="color:var(--amber)">${fmt(c.appts)}</td>
+      <td class="r" style="color:var(--green);font-weight:700">${fmt(c.closed)}</td>
+      <td class="r"><span class="sbadge ${cls}">${c.score}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+function renderTrend(){
+  const map={};
+  FILTERED.forEach(l=>{
+    const d=getCreated(l);if(d.getFullYear()<2020)return;
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    map[k]=(map[k]||0)+1;
+  });
+  const keys=Object.keys(map).sort();
+  const labels=keys.map(k=>{const[y,m]=k.split("-");return MONTHS[+m-1]+"'"+y.slice(2);});
+  if(tChart)tChart.destroy();
+  tChart=new Chart(document.getElementById("trend-chart").getContext("2d"),{
+    type:"bar",
+    data:{labels,datasets:[{label:"Leads",data:keys.map(k=>map[k]),
+      backgroundColor:"#1e3a8a22",borderColor:"#1e3a8a",borderWidth:2,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{font:{size:10},color:"#8a9ab8"},grid:{color:"#e8edf8"},border:{color:"#dce3f0"}},
+        y:{ticks:{font:{size:10},color:"#8a9ab8"},grid:{color:"#e8edf8"},border:{color:"#dce3f0"}}
+      }}
+  });
+}
+
+function renderFunnel(){
+  const total=FILTERED.length;
+  const appt=FILTERED.filter(l=>stageGroup(l.stage||l.status||"")==="appointment").length;
+  const contract=FILTERED.filter(l=>stageGroup(l.stage||l.status||"")==="contract").length;
+  const closed=FILTERED.filter(l=>stageGroup(l.stage||l.status||"")==="closed").length;
+  const stages=[
+    {n:"Leads received",c:total,   col:"#1e3a8a"},
+    {n:"Appointment set",c:appt,   col:"#e8a020"},
+    {n:"Under contract", c:contract,col:"#8a4ac8"},
+    {n:"Closed / won",   c:closed,  col:"#1a9a3a"},
+  ];
+  document.getElementById("funnel").innerHTML=stages.map(s=>{
+    const w=total>0?Math.max((s.c/total*100),s.c>0?3:0):0;
+    return`<div class="frow">
+      <span class="fname">${s.n}</span>
+      <div class="fbg"><div class="fbar" style="width:${w}%;background:${s.col}">
+        <span class="fct">${s.c>0?fmt(s.c):""}</span>
+      </div></div>
+      <span class="fpct">${pct(s.c,total)}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderStageChart(){
+  const counts={};
+  FILTERED.forEach(l=>{const s=l.stage||l.status||"New Lead";counts[s]=(counts[s]||0)+1;});
+  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,9);
+  if(sChart)sChart.destroy();
+  sChart=new Chart(document.getElementById("stage-chart").getContext("2d"),{
+    type:"doughnut",
+    data:{labels:entries.map(e=>e[0]),
+      datasets:[{data:entries.map(e=>e[1]),backgroundColor:CHART_PAL,borderWidth:2,borderColor:"#fff"}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"60%",
+      plugins:{legend:{position:"right",labels:{color:"#4a5a7a",font:{size:10},boxWidth:10,padding:8}}}}
+  });
+}
+
+function renderStateBars(){
+  const data=buildStateData();
+  const maxL=Math.max(...data.map(s=>s.leads),1);
+  const colors=["#1e3a8a","#2a4db0","#3a6ab8","#4a7ac8","#6aaad8","#93b4e8"];
+  document.getElementById("state-bars").innerHTML=data.map((s,i)=>`
+    <div class="sbar-row">
+      <span class="sbar-lbl">${s.state}</span>
+      <div class="sbar-bg">
+        <div class="sbar-fill" style="width:${Math.max((s.leads/maxL*100),3)}%;background:${colors[Math.min(i,colors.length-1)]}">
+          <span class="sbar-val">${fmt(s.leads)}</span>
+        </div>
+      </div>
+      <span class="sbar-meta">${s.counties} county${s.counties!==1?"s":""} · ${s.closed} closed</span>
+    </div>`).join("");
+}
+
+function renderMapCards(){
+  const data=buildCountyData();
+  document.getElementById("map-cards").innerHTML=data.map(c=>{
+    const sub=c.closed>0
+      ?`<span style="color:#1a6a2a;font-weight:600">${c.closed} closed</span>`
+      :c.appts>0
+      ?`<span style="color:#9a7010">${c.appts} appointments</span>`
+      :`<span style="color:var(--text3)">${c.leads} active leads</span>`;
+    return`<div class="map-card">
+      <div class="mc-county">${c.county}, ${c.state}</div>
+      <div class="mc-city">${c.city||"—"}</div>
+      <div class="mc-count">${fmt(c.leads)}</div>
+      <div class="mc-sub">${sub}</div>
+    </div>`;
+  }).join("");
+}
+
+window.addEventListener("DOMContentLoaded",loadData);
+</script>
+</body>
+</html>
